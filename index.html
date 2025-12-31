@@ -16,7 +16,7 @@
       font-family: 'Noto Sans Thai', 'Prompt', sans-serif;
       margin: 0;
       padding: 0;
-      user-select: none; /* Prevent text selection while dragging */
+      user-select: none;
     }
     
     * {
@@ -56,7 +56,6 @@
       box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
     }
 
-    /* Checkerboard for transparent option */
     .bg-checkerboard {
       background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), 
                         linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), 
@@ -94,7 +93,6 @@
       animation: spin 1s linear infinite;
     }
 
-    /* Custom Range Styling - Draggable Feel */
     input[type=range] {
       -webkit-appearance: none;
       background: transparent;
@@ -124,10 +122,9 @@
       transform: scale(1.1);
     }
 
-    /* Interactive Preview Area */
     .avatar-preview-container {
       cursor: grab;
-      touch-action: none; /* Disable default touch behaviors for custom drag */
+      touch-action: none;
     }
 
     .avatar-preview-container:active {
@@ -191,7 +188,6 @@
       mobileMenuOpen: false
     };
 
-    // Drag State
     let isDragging = false;
     let startX = 0;
     let startRotation = 0;
@@ -200,25 +196,27 @@
       return Math.random().toString(36).substring(2, 12);
     }
 
-    function getAvatarUrl() {
+    function getAvatarUrl(format = 'svg') {
       const bgColor = state.backgroundColor === 'transparent' ? '' : `&backgroundColor=${state.backgroundColor.replace('#', '')}`;
-      return `https://api.dicebear.com/9.x/${state.selectedStyle}/svg?seed=${encodeURIComponent(state.seed)}${bgColor}`;
+      // Use PNG for download, SVG for crisp preview
+      return `https://api.dicebear.com/9.x/${state.selectedStyle}/${format}?seed=${encodeURIComponent(state.seed)}${bgColor}&size=512`;
     }
 
     async function downloadAvatar() {
       state.isDownloading = true;
       render();
       try {
-        const response = await fetch(getAvatarUrl());
-        const svgText = await response.text();
-        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+        // Download as PNG by default
+        const pngUrl = getAvatarUrl('png');
+        const response = await fetch(pngUrl);
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `avatar-${state.seed}.svg`;
+        a.download = `avatar-${state.seed}.png`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('ดาวน์โหลดเรียบร้อย!', 'success');
+        showToast('ดาวน์โหลดไฟล์ PNG เรียบร้อย!', 'success');
       } catch (error) {
         showToast('ดาวน์โหลดล้มเหลว', 'error');
       } finally {
@@ -241,7 +239,6 @@
       }, 3000);
     }
 
-    // Drag Interaction Handlers
     function handleDragStart(e) {
       isDragging = true;
       startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -252,11 +249,9 @@
       if (!isDragging) return;
       const currentX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
       const deltaX = currentX - startX;
-      // Sensitivity factor (0.5 means 2px of drag = 1 degree of rotation)
       const newRotation = (startRotation + deltaX * 0.8) % 360;
       state.rotation = Math.round(newRotation < 0 ? 360 + newRotation : newRotation);
       
-      // Update only the rotation element and image to prevent full re-render for performance
       const img = document.querySelector('#avatar-preview-img');
       const rotValue = document.querySelector('#rotation-value');
       const rotSlider = document.querySelector('#rotation-slider');
@@ -270,7 +265,6 @@
       isDragging = false;
     }
 
-    // Attach global listeners for dragging (ensures it works even if mouse leaves element)
     window.addEventListener('mousemove', handleDragMove);
     window.addEventListener('touchmove', handleDragMove, { passive: false });
     window.addEventListener('mouseup', handleDragEnd);
@@ -281,11 +275,9 @@
 
       document.getElementById('root').innerHTML = `
         <div class="h-full w-full flex flex-col relative overflow-hidden" style="background-color: ${config.background_color};">
-          <!-- Decorative Background -->
           <div class="blur-decoration w-80 h-80 top-[-10%] left-[-10%]" style="background: ${config.primary_color};"></div>
           <div class="blur-decoration w-80 h-80 bottom-[-10%] right-[-10%]" style="background: ${config.accent_color};"></div>
 
-          <!-- Header -->
           <header class="glass-morphism sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background: ${config.primary_color};">
@@ -297,38 +289,31 @@
                     class="hidden md:flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 shadow-md ${state.isDownloading ? 'opacity-50' : ''}"
                     style="background: ${config.primary_color}; color: white;">
               ${state.isDownloading ? '<svg class="w-5 h-5 spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4V1m0 22v-3"/></svg>' : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>'}
-              <span>Download SVG</span>
+              <span>Download PNG</span>
             </button>
           </header>
 
-          <!-- Main Layout -->
           <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <!-- Sidebar -->
             <aside class="hidden md:block w-80 overflow-y-auto p-6 border-r border-slate-200 shadow-sm" style="background: white;">
               ${renderSidebar()}
             </aside>
 
-            <!-- Preview Area -->
             <main class="flex-1 flex flex-col items-center justify-center p-6 bg-slate-50/30">
-              <div class="text-center mb-6 block md:hidden">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Preview</p>
-                <p class="text-sm font-medium text-slate-600 italic">Drag avatar to rotate</p>
-              </div>
-
               <div class="relative group">
                 <div class="avatar-preview-container bg-white rounded-[3rem] p-10 shadow-2xl transition-all duration-500 group-hover:shadow-emerald-200/50"
                      onmousedown="window.appFunctions.handleDragStart(event)"
                      ontouchstart="window.appFunctions.handleDragStart(event)">
                   <div class="w-64 h-64 md:w-80 md:h-80 rounded-[2rem] overflow-hidden flex items-center justify-center pointer-events-none" 
                        style="background: ${state.backgroundColor === 'transparent' ? '#f8fafc' : state.backgroundColor}; ${state.backgroundColor === 'transparent' ? 'background-image: radial-gradient(#e2e8f0 1px, transparent 1px); background-size: 20px 20px;' : ''}">
-                    <img id="avatar-preview-img" src="${getAvatarUrl()}" class="w-full h-full transition-transform duration-75 ease-out" style="transform: ${avatarTransform};" />
+                    <img id="avatar-preview-img" src="${getAvatarUrl('svg')}" class="w-full h-full transition-transform duration-75 ease-out" style="transform: ${avatarTransform};" />
                   </div>
                 </div>
                 
-                <div class="mt-8 text-center">
+                <div class="mt-8 text-center flex flex-col gap-2">
                   <span class="px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 font-mono text-sm font-bold border border-slate-200 shadow-sm">
                     ID: ${state.seed}
                   </span>
+                  <p class="text-xs text-slate-400 font-medium md:hidden">💡 Tip: ลากที่ตัว Avatar เพื่อหมุน</p>
                 </div>
               </div>
 
